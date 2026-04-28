@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>L'Impostore</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+
+  <!-- Firebase (compat SDK, più semplice con CDN) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+  <!-- React -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    /* ── Reset & Base ───────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b27;
+      --surface2:  #1e2535;
+      --border:    rgba(255,255,255,0.07);
+      --border2:   rgba(255,255,255,0.13);
+      --gold:      #f0b429;
+      --gold-bg:   rgba(240,180,41,0.12);
+      --gold-border:rgba(240,180,41,0.25);
+      --red:       #f87171;
+      --red-bg:    rgba(248,113,113,0.1);
+      --red-border:rgba(248,113,113,0.25);
+      --green:     #4ade80;
+      --green-bg:  rgba(74,222,128,0.08);
+      --green-border:rgba(74,222,128,0.2);
+      --blue:      #60a5fa;
+      --blue-bg:   rgba(96,165,250,0.1);
+      --blue-border:rgba(96,165,250,0.25);
+      --text:      #e8e4d9;
+      --muted:     rgba(232,228,217,0.45);
+      --radius:    10px;
+      --radius-sm: 6px;
+    }
+
+    body {
+      font-family: 'Outfit', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 24px 16px 48px;
+    }
+
+    #root { width: 100%; max-width: 480px; }
+
+    /* ── Typography ─────────────────────────────────────────────────── */
+    h1 { font-size: 28px; font-weight: 600; color: var(--gold); letter-spacing: -0.5px; margin-bottom: 4px; }
+    h2 { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+    .muted { font-size: 13px; color: var(--muted); }
+    .label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+
+    /* ── Card ───────────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 12px;
+    }
+    .card-top {
+      height: 2px;
+      border-radius: 2px 2px 0 0;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      opacity: 0.4;
+      margin: -24px -24px 24px;
+    }
+
+    /* ── Inputs ─────────────────────────────────────────────────────── */
+    input[type="text"] {
+      display: block;
+      width: 100%;
+      background: var(--surface2);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 11px 14px;
+      color: var(--text);
+      font-family: 'Outfit', sans-serif;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.15s;
+      margin-bottom: 10px;
+    }
+    input[type="text"]:focus { border-color: var(--border2); }
+    input[type="text"]::placeholder { color: var(--muted); }
+
+    /* ── Buttons ────────────────────────────────────────────────────── */
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 11px 18px;
+      border-radius: var(--radius-sm);
+      border: 0.5px solid var(--border2);
+      background: transparent;
+      color: var(--text);
+      font-family: 'Outfit', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s, transform 0.1s;
+      margin-bottom: 8px;
+      text-align: left;
+    }
+    .btn:hover:not(:disabled) { background: var(--surface2); }
+    .btn:active:not(:disabled) { transform: scale(0.99); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-primary {
+      background: var(--gold);
+      color: #0d1117;
+      border-color: transparent;
+      font-weight: 600;
+      text-align: center;
+    }
+    .btn-primary:hover:not(:disabled) { background: #f5c040; }
+
+    .btn-vote {
+      background: var(--surface2);
+      border: 0.5px solid var(--border);
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .btn-vote:hover:not(:disabled) { border-color: var(--gold-border); background: var(--gold-bg); }
+
+    /* ── Divider ────────────────────────────────────────────────────── */
+    .divider {
+      display: flex; align-items: center; gap: 10px;
+      margin: 14px 0; font-size: 12px; color: var(--muted);
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 0.5px; background: var(--border);
+    }
+
+    /* ── Room Code ──────────────────────────────────────────────────── */
+    .code-box {
+      text-align: center;
+      padding: 18px;
+      background: var(--gold-bg);
+      border: 0.5px solid var(--gold-border);
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+    }
+    .code-big {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 36px;
+      font-weight: 500;
+      color: var(--gold);
+      letter-spacing: 10px;
+      margin: 6px 0 8px;
+    }
+    .copy-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--blue); font-family: 'Outfit', sans-serif;
+      font-size: 12px; padding: 0; margin-left: 6px;
+    }
+
+    /* ── Player List ────────────────────────────────────────────────── */
+    .player-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px;
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+    .badge-host {
+      margin-left: auto; font-size: 10px; letter-spacing: 1px;
+      text-transform: uppercase; color: var(--gold); opacity: 0.7;
+    }
+
+    /* ── Toggle ─────────────────────────────────────────────────────── */
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 14px;
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      margin-bottom: 8px;
+      cursor: pointer; user-select: none;
+      transition: background 0.15s;
+    }
+    .toggle-row:hover { background: var(--surface2); }
+    .toggle-track {
+      width: 38px; height: 22px; border-radius: 11px;
+      background: var(--border2); position: relative; flex-shrink: 0;
+      transition: background 0.2s;
+    }
+    .toggle-track.on { background: var(--gold); }
+    .toggle-thumb {
+      width: 16px; height: 16px; border-radius: 50%;
+      background: white; position: absolute; top: 3px; left: 3px;
+      transition: transform 0.2s;
+    }
+    .toggle-track.on .toggle-thumb { transform: translateX(16px); }
+
+    /* ── Role Card ──────────────────────────────────────────────────── */
+    .role-card {
+      text-align: center; padding: 24px 16px;
+      border-radius: var(--radius); margin-bottom: 16px;
+    }
+    .role-impostor { background: var(--red-bg); border: 0.5px solid var(--red-border); }
+    .role-player { background: var(--green-bg); border: 0.5px solid var(--green-border); }
+    .role-emoji { font-size: 28px; margin-bottom: 8px; }
+    .role-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
+    .role-label-red { color: var(--red); }
+    .role-label-green { color: var(--green); }
+    .role-word { font-size: 32px; font-weight: 600; margin-bottom: 6px; }
+    .role-sub { font-size: 13px; color: var(--muted); }
+
+    /* ── Hint Box ───────────────────────────────────────────────────── */
+    .hint-box {
+      margin-top: 14px; padding: 12px 14px; text-align: left;
+      background: var(--gold-bg); border: 0.5px solid var(--gold-border);
+      border-radius: var(--radius-sm);
+    }
+    .hint-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); margin-bottom: 4px; }
+    .hint-value { font-size: 14px; font-style: italic; color: var(--text); }
+
+    /* ── Turn Order ─────────────────────────────────────────────────── */
+    .order-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px;
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      margin-bottom: 6px; font-size: 14px;
+    }
+    .order-row.me { border-color: var(--blue-border); background: var(--blue-bg); }
+    .order-num {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--surface2); border: 0.5px solid var(--border2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600; flex-shrink: 0;
+    }
+
+    /* ── Vote / Results ─────────────────────────────────────────────── */
+    .result-banner {
+      text-align: center; padding: 24px 16px;
+      border-radius: var(--radius); margin-bottom: 16px;
+    }
+    .result-win { background: var(--green-bg); border: 0.5px solid var(--green-border); }
+    .result-lose { background: var(--red-bg); border: 0.5px solid var(--red-border); }
+    .result-icon { font-size: 32px; margin-bottom: 8px; }
+    .result-title { font-size: 22px; font-weight: 600; margin-bottom: 6px; }
+
+    .vote-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 9px 12px; border-radius: var(--radius-sm);
+      margin-bottom: 4px; font-size: 14px;
+      background: var(--surface2); border: 0.5px solid var(--border);
+    }
+    .vote-row.imp-row { background: var(--red-bg); border-color: var(--red-border); }
+    .vote-count { font-weight: 600; color: var(--gold); }
+
+    /* ── Misc ───────────────────────────────────────────────────────── */
+    .error-msg {
+      font-size: 13px; color: var(--red);
+      padding: 9px 12px; background: var(--red-bg);
+      border-radius: var(--radius-sm); margin-bottom: 10px;
+    }
+    .waiting { font-size: 13px; color: var(--muted); text-align: center; padding: 14px; }
+    .info-banner {
+      font-size: 13px; padding: 10px 14px; border-radius: var(--radius-sm);
+      background: var(--gold-bg); border: 0.5px solid var(--gold-border);
+      color: var(--gold); margin-bottom: 10px;
+    }
+
+    /* ── Config Warning ─────────────────────────────────────────────── */
+    .config-warning {
+      background: var(--red-bg); border: 1px solid var(--red-border);
+      border-radius: var(--radius); padding: 20px; text-align: center;
+      margin-top: 24px;
+    }
+    .config-warning h3 { color: var(--red); margin-bottom: 8px; }
+    .config-warning p { font-size: 13px; color: var(--muted); }
+    .config-warning code { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text); }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+// ─────────────────────────────────────────────────────────────────────────────
+// ██████╗  FIREBASE CONFIG — SOSTITUISCI CON I TUOI VALORI ██████████████████
+// ─────────────────────────────────────────────────────────────────────────────
+// Vai su https://console.firebase.google.com → Il tuo progetto
+// → Impostazioni progetto → Le tue app → Configurazione SDK
+// Copia i valori qui sotto:
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyBedvR_CO_uhQWdKemc62MvgS_ci465hds",
+  authDomain:        "impostor-game-64d03.firebaseapp.com",
+  databaseURL:       "https://impostor-game-64d03-default-rtdb.firebaseio.com",   // es. https://tuoprogetto-default-rtdb.firebaseio.com
+  projectId:         "impostor-game-64d03",
+  storageBucket:     "impostor-game-64d03.firebasestorage.app",
+  messagingSenderId: "199379392983",
+  appId:             "1:199379392983:web:a9f876db1aa586f9955392",
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
+const IS_CONFIGURED = !firebaseConfig.apiKey.startsWith("INSERISCI");
+
+let db = null;
+if (IS_CONFIGURED) {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.database();
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function uid()    { return Math.random().toString(36).slice(2, 14); }
+function mkCode() { return Math.random().toString(36).slice(2, 7).toUpperCase(); }
+function rnd(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Legge il codice stanza dall'URL (?room=AB3K9)
+function getRoomFromURL() {
+  return new URLSearchParams(window.location.search).get("room") || "";
+}
+
+// Aggiorna l'URL con il codice stanza (senza ricaricare la pagina)
+function setRoomInURL(code) {
+  const url = new URL(window.location.href);
+  if (code) url.searchParams.set("room", code);
+  else url.searchParams.delete("room");
+  window.history.replaceState({}, "", url.toString());
+}
+
+// ── Firebase DB helpers ───────────────────────────────────────────────────────
+function normalizeRoom(data) {
+  if (!data) return null;
+  if (data.players && !Array.isArray(data.players))
+    data.players = Object.values(data.players);
+  if (data.turnOrder && !Array.isArray(data.turnOrder))
+    data.turnOrder = Object.values(data.turnOrder);
+  if (!data.votes || Array.isArray(data.votes))
+    data.votes = {};
+  return data;
+}
+
+async function saveRoom(code, data) {
+  await db.ref(`rooms/${code}`).set(data);
+}
+
+async function loadRoomOnce(code) {
+  const snap = await db.ref(`rooms/${code}`).once("value");
+  return snap.exists() ? normalizeRoom(snap.val()) : null;
+}
+
+function subscribeRoom(code, callback) {
+  const ref = db.ref(`rooms/${code}`);
+  ref.on("value", snap => { if (snap.exists()) callback(normalizeRoom(snap.val())); });
+  return () => ref.off("value");
+}
+
+// ── Word bank con indizi vaghi ────────────────────────────────────────────────
+const WORD_HINTS = {
+  // CIBO
+  "Spaghetti":        "Un filo che unisce Nord e Sud",
+  "Pizza":            "Un cerchio che mette d'accordo tutti",
+  "Tiramisù":         "Ti porta su quando sei giù",
+  "Gelato":           "La felicità che si scioglie",
+  "Risotto":          "La lentezza premiata nel piatto",
+  "Cannoli":          "Due mondi in un solo morso",
+  "Lasagna":          "Una storia raccontata a strati",
+  "Focaccia":         "Il pane che non si prende sul serio",
+  "Sushi":            "La perfezione che si mangia in un boccone",
+  "Formaggio":        "Più aspetti più vale",
+  "Vino":             "L'unica cosa che migliora invecchiando",
+  "Caffè":            "Il rito che precede tutto il resto",
+  // SPORT
+  "Calcio":           "Undici che diventano uno",
+  "Tennis":           "Una conversazione silenziosa a distanza",
+  "Nuoto":            "Dove il silenzio è obbligatorio",
+  "Ciclismo":         "La montagna come nemico da battere",
+  "Basket":           "Chi tocca il cielo vince",
+  "Sci":              "La gravità come alleata",
+  "Boxe":             "L'arte di incassare senza cadere",
+  "Pallavolo":        "Non lasciare che tocchi terra",
+  "Golf":             "Meno fai più vali",
+  "Surf":             "La natura decide quando inizia",
+  "Arrampicata":      "Il muro come sfida personale",
+  "Formula 1":        "Dove un battito di ciglia vale una vittoria",
+  "Scacchi":          "La guerra senza feriti",
+  // SQUADRE DI CALCIO
+  "Juventus":         "La fidanzata d'Italia che tutti odiano o amano",
+  "Milan":            "Rosso e nero come il cuore di Milano",
+  "Inter":            "L'altra metà di una città divisa",
+  "Napoli":           "Una città intera che trattiene il respiro",
+  "Roma":             "Eterna come la città che rappresenta",
+  "Bayern Monaco":    "Il castello che domina il calcio europeo",
+  "Barcellona":       "L'arte applicata allo sport",
+  "Real Madrid":      "La casa dei Galacticos",
+  // CANTANTI
+  "Freddie Mercury":  "Una voce che non aveva confini",
+  "Michael Jackson":  "Il mondo si fermava quando si muoveva",
+  "Madonna":          "Si è reinventata più volte di chiunque altro",
+  "Elvis Presley":    "Ha fatto tremare le ginocchia a una generazione",
+  "David Bowie":      "Ogni volta un'altra persona, sempre lui",
+  "Beyoncé":          "Quando entra in una stanza si sente",
+  "Eminem":           "Le parole come pugni",
+  "Vasco Rossi":      "L'Italia che non vuole crescere lo adora",
+  "Lucio Battisti":   "Le sue canzoni le conosce tuo nonno e tuo fratello",
+  // ATTORI
+  "Leonardo DiCaprio": "Ha aspettato una vita quella statuetta",
+  "Meryl Streep":      "Ogni personaggio sembra la vera lei",
+  "Al Pacino":         "Urla come nessuno, sussurra meglio di tutti",
+  "Audrey Hepburn":    "L'eleganza che non si impara",
+  "Tom Hanks":         "L'amico che vorresti avere nella vita reale",
+  "Marlon Brando":     "Ha cambiato come si recita per sempre",
+  "Joaquin Phoenix":   "Sparisce dentro i personaggi",
+  "Cate Blanchett":    "Fredda fuori, vulcano dentro",
+  // PERSONAGGI TV
+  "Walter White":      "Da professore a leggenda per le ragioni sbagliate",
+  "Tony Soprano":      "Gestisce affari di famiglia in tutti i sensi",
+  "Sherlock Holmes":   "Vede quello che gli altri ignorano",
+  "Homer Simpson":     "La mediocrità che ci rappresenta tutti un po'",
+  "Jon Snow":          "Sa meno degli altri ma sopravvive a tutti",
+  "Tyrion Lannister":  "Il più piccolo con la testa più grande",
+  "Don Draper":        "Vende sogni che non possiede",
+  "Eleven":            "Il potere più grande nella persona più fragile",
+  // VIDEOGIOCHI
+  "Mario":             "Un idraulico che ha salvato il mondo più volte",
+  "The Last of Us":    "L'amore paterno in un mondo finito",
+  "Minecraft":         "Un mondo infinito fatto di cubi",
+  "GTA":               "La libertà di fare tutto quello che non puoi fare",
+  "FIFA":              "Litigi garantiti tra amici",
+  "Dark Souls":        "Muori, impari, riprovi",
+  "Fortnite":          "Cento entrano, uno esce",
+  "The Legend of Zelda": "Un eroe silenzioso in un mondo enorme",
+  "God of War":        "La rabbia di un padre come forza motrice",
+  "Red Dead Redemption": "Il tramonto di un'epoca raccontato a cavallo",
+  // PERSONAGGI FAMOSI
+  "Napoleon Bonaparte": "Basso di statura, enorme di ambizione",
+  "Albert Einstein":    "Aveva ragione su cose che nessuno capiva ancora",
+  "Steve Jobs":         "Vendeva oggetti che non sapevi di volere",
+  "Elon Musk":          "Pensa in pianeti, non in paesi",
+  "Cristiano Ronaldo":  "Si allena come se la genetica non bastasse",
+  "Lionel Messi":       "Fa sembrare semplice l'impossibile",
+  "Muhammad Ali":       "Vinceva prima ancora di entrare sul ring",
+  "Nelson Mandela":     "Uscì dalla prigione più libero di chi lo aveva messo dentro",
+  "Cleopatra":          "Il potere aveva il suo viso",
+  "Maradona":           "Metà uomo metà leggenda, tutto contraddizione",
+  // CULTURA GENERALE
+  "Bibbia":             "Il libro più letto e meno capito",
+  "Titanic":            "Tutti sanno come finisce ma lo guardano lo stesso",
+  "Monnalisa":          "Ci si chiede cosa stia pensando da 500 anni",
+  "Torre Eiffel":       "La odiavano prima di amarla",
+  "Colosseo":           "Le pietre che raccontano la folla",
+  "Piramidi":           "Risposte che creano domande",
+  "Shakespeare":        "Inventava parole quando non ne trovava",
+  "Harry Potter":       "Un treno verso un mondo che esiste solo lì",
+  "Il Padrino":         "Un'offerta raccontata per generazioni",
+  "Intelligenza Artificiale": "Lo specchio che inizia a risponderti",
+  // LUOGHI
+  "Spiaggia":           "Dove due mondi si toccano senza mescolarsi",
+  "Montagna":           "Più sali meno c'è",
+  "Castello":           "Pensato per tenere fuori",
+  "Aeroporto":          "Tutti di passaggio, nessuno ci resta",
+  "Mercato":            "Il prezzo si discute",
+  "Stadio":             "Migliaia con lo stesso obiettivo",
+  "Faro":               "Solo ma visibile da lontano",
+  "Vulcano":            "Accumula per poi cedere",
+  "Cinema":             "Si crede a ciò che non esiste",
+  "Biblioteca":         "Voci silenziose ovunque",
+  "Ospedale":           "Ci si va senza programmare",
+  "Ristorante":         "Altri decidono come cucinare",
+  "Teatro":             "Tutti sanno che è falso ma ci credono",
+  "Museo":              "Il tempo si è fermato qui",
+  "Stazione":           "Nessuno ci resta volentieri",
+  "Università":         "Anni di teoria prima della realtà",
+  "Prigione":           "Lo spazio è il castigo",
+  "Isola":              "Libera e intrappolata allo stesso tempo",
+  // OGGETTI / ALTRO
+  "Chitarra":           "La tensione produce suono",
+  "Telescopio":         "Avvicina senza toccare",
+  "Ombrello":           "Inutile finché non serve",
+  "Bussola":            "Non cambia mai idea",
+  "Orologio":           "Conta qualcosa di invisibile",
+  "Specchio":           "Vero ma ribaltato",
+  "Mongolfiera":        "Il vento decide la direzione",
+  "Sottomarino":        "La pressione aumenta scendendo",
+};
+const WORDS = Object.keys(WORD_HINTS);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Componente principale
+// ─────────────────────────────────────────────────────────────────────────────
+const { useState, useEffect, useRef } = React;
+
+function App() {
+  const [pid]          = useState(uid);
+  const [nick, setNick]           = useState("");
+  const [joinInput, setJoinInput] = useState(getRoomFromURL());
+  const [roomCode, setRoomCode]   = useState("");
+  const [gs, setGs]               = useState(null);
+  const [error, setError]         = useState("");
+  const [loading, setLoading]     = useState(false);
+  const [copied, setCopied]       = useState(false);
+  const [guessInput, setGuessInput] = useState("");
+  const unsubRef = useRef(null);
+
+  // Sottoscrivi aggiornamenti Firebase quando si entra in una stanza
+  useEffect(() => {
+    if (!roomCode || !IS_CONFIGURED) return;
+    unsubRef.current = subscribeRoom(roomCode, setGs);
+    return () => { if (unsubRef.current) unsubRef.current(); };
+  }, [roomCode]);
+
+  if (!IS_CONFIGURED) {
+    return (
+      <div className="config-warning">
+        <h3>⚠️ Firebase non configurato</h3>
+        <p>Apri <code>index.html</code> e inserisci i tuoi valori Firebase nella sezione <code>firebaseConfig</code> in cima al file.</p>
+        <p style={{marginTop:8}}>Leggi il <code>README.md</code> per le istruzioni passo-passo.</p>
+      </div>
+    );
+  }
+
+  // Stato derivato
+  const phase    = gs?.phase || "home";
+  const screen   = !roomCode ? "home"
+    : !gs         ? "loading"
+    : phase === "lobby"   ? "lobby"
+    : phase === "playing" ? "game"
+    : phase === "voting"  ? "voting"
+    : "results";
+
+  const me             = gs?.players?.find(p => p.id === pid);
+  const isHost         = me?.isHost;
+  const amImp          = gs?.impostorId === pid;
+  const orderedPlayers = (gs?.turnOrder || []).map(id => gs.players.find(p => p.id === id)).filter(Boolean);
+  const votes          = gs?.votes || {};
+  const hasVoted       = !!votes[pid];
+  const voteCount      = Object.values(votes).reduce((acc, id) => { acc[id] = (acc[id] || 0) + 1; return acc; }, {});
+  const mostVotedId    = Object.entries(voteCount).sort((a, b) => b[1] - a[1])[0]?.[0];
+  const mostVotedPlayer = gs?.players?.find(p => p.id === mostVotedId);
+  const impostorCaught = mostVotedId === gs?.impostorId;
+  const impostorPlayer = gs?.players?.find(p => p.id === gs?.impostorId);
+  const impostorWins   = !impostorCaught || gs?.impostorGuessCorrect === true;
+
+  // ── Azioni ────────────────────────────────────────────────────────────────
+  async function handleCreate() {
+    if (!nick.trim()) { setError("Inserisci un nickname!"); return; }
+    setLoading(true); setError("");
+    const code = mkCode();
+    const state = {
+      phase: "lobby",
+      players: [{ id: pid, name: nick.trim(), isHost: true }],
+      hostId: pid, hintEnabled: false,
+      word: null, impostorId: null, turnOrder: [], votes: {},
+    };
+    await saveRoom(code, state);
+    setRoomCode(code);
+    setRoomInURL(code);
+    setLoading(false);
+  }
+
+  async function handleJoin() {
+    if (!nick.trim()) { setError("Inserisci un nickname!"); return; }
+    const code = joinInput.trim().toUpperCase();
+    if (!code) { setError("Inserisci il codice stanza!"); return; }
+    setLoading(true); setError("");
+    const state = await loadRoomOnce(code);
+    if (!state) { setError("Stanza non trovata!"); setLoading(false); return; }
+    if (state.phase !== "lobby") { setError("La partita è già iniziata!"); setLoading(false); return; }
+    if (!state.players.find(p => p.id === pid)) {
+      state.players.push({ id: pid, name: nick.trim(), isHost: false });
+      await saveRoom(code, state);
+    }
+    setRoomCode(code);
+    setRoomInURL(code);
+    setLoading(false);
+  }
+
+  async function handleToggleHint() {
+    const state = await loadRoomOnce(roomCode);
+    state.hintEnabled = !state.hintEnabled;
+    await saveRoom(roomCode, state);
+  }
+
+  async function handleStart() {
+    if (gs.players.length < 2) { setError("Servono almeno 2 giocatori!"); return; }
+    const state = await loadRoomOnce(roomCode);
+    const word  = rnd(WORDS);
+    const imp   = rnd(state.players);
+    const turnOrder = shuffle(state.players).map(p => p.id);
+    Object.assign(state, { phase: "playing", word, impostorId: imp.id, turnOrder, votes: {} });
+    await saveRoom(roomCode, state);
+  }
+
+  async function handleGoVoting() {
+    const state = await loadRoomOnce(roomCode);
+    state.phase = "voting";
+    await saveRoom(roomCode, state);
+  }
+
+  async function handleVote(targetId) {
+    const state = await loadRoomOnce(roomCode);
+    if (state.votes[pid]) return;
+    state.votes[pid] = targetId;
+    if (Object.keys(state.votes).length >= state.players.length) state.phase = "eliminated";
+    await saveRoom(roomCode, state);
+  }
+
+  async function handleRevealWord() {
+    const state = await loadRoomOnce(roomCode);
+    const vc = Object.values(state.votes).reduce((a, id) => { a[id] = (a[id]||0)+1; return a; }, {});
+    const topId = Object.entries(vc).sort((a,b) => b[1]-a[1])[0]?.[0];
+    if (topId === state.impostorId) {
+      state.phase = "guessing";
+    } else {
+      state.phase = "results";
+      state.impostorGuessCorrect = false;
+    }
+    await saveRoom(roomCode, state);
+  }
+
+  async function handleGuess() {
+    if (!guessInput.trim()) return;
+    const state = await loadRoomOnce(roomCode);
+    const correct = guessInput.trim().toLowerCase() === state.word.toLowerCase();
+    state.phase = "results";
+    state.impostorGuessCorrect = correct;
+    state.impostorGuess = guessInput.trim();
+    await saveRoom(roomCode, state);
+    setGuessInput("");
+  }
+
+  async function handleRestart() {
+    const state = await loadRoomOnce(roomCode);
+    Object.assign(state, { phase: "lobby", word: null, impostorId: null, turnOrder: [], votes: {}, impostorGuessCorrect: null, impostorGuess: null });
+    await saveRoom(roomCode, state);
+  }
+
+  function copyLink() {
+    const url = new URL(window.location.href);
+    url.searchParams.set("room", roomCode);
+    navigator.clipboard?.writeText(url.toString()).catch(() => {});
+    setCopied(true); setTimeout(() => setCopied(false), 1800);
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  return (
+    <div>
+
+      {/* ── LOADING ──────────────────────────────────────────────────────── */}
+      {screen === "loading" && (
+        <div className="card" style={{marginTop: 32, textAlign: "center"}}>
+          <p className="muted">Connessione in corso…</p>
+        </div>
+      )}
+
+      {/* ── HOME ─────────────────────────────────────────────────────────── */}
+      {screen === "home" && (
+        <div className="card" style={{marginTop: 32}}>
+          <div className="card-top" />
+          <h1>L'Impostore</h1>
+          <p className="muted" style={{marginBottom: 24}}>Gioca con gli amici in chat vocale — l'app gestisce ruoli e votazioni</p>
+          <input type="text" placeholder="Il tuo nickname"
+            value={nick} onChange={e => setNick(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && handleCreate()} />
+          {error && <div className="error-msg">{error}</div>}
+          <button className="btn btn-primary" onClick={handleCreate} disabled={loading}>
+            {loading ? "Caricamento…" : "Crea Stanza"}
+          </button>
+          <div className="divider">oppure entra in una stanza esistente</div>
+          <input type="text" placeholder="Codice stanza (es. AB3K9)"
+            value={joinInput} onChange={e => setJoinInput(e.target.value.toUpperCase())}
+            onKeyDown={e => e.key === "Enter" && handleJoin()} />
+          <button className="btn" onClick={handleJoin} disabled={loading}>Unisciti</button>
+        </div>
+      )}
+
+      {/* ── LOBBY ────────────────────────────────────────────────────────── */}
+      {screen === "lobby" && (
+        <div className="card" style={{marginTop: 24}}>
+          <div className="card-top" />
+          <div className="code-box">
+            <div className="label">Codice Stanza</div>
+            <div className="code-big">{roomCode}</div>
+            <div className="muted" style={{fontSize: 12}}>
+              Condividi il link con gli amici
+              <button className="copy-btn" onClick={copyLink}>
+                {copied ? "✓ copiato!" : "— copia link"}
+              </button>
+            </div>
+          </div>
+
+          <h2>Giocatori ({gs?.players?.length})</h2>
+          {gs?.players?.map(p => (
+            <div key={p.id} className="player-row">
+              <div className="dot" />
+              <span>{p.name}{p.id === pid ? " (tu)" : ""}</span>
+              {p.isHost && <span className="badge-host">Host</span>}
+            </div>
+          ))}
+
+          <div style={{marginTop: 16}}>
+            <div className="label">Opzioni</div>
+            <div className="toggle-row" onClick={isHost ? handleToggleHint : undefined}
+              style={{cursor: isHost ? "pointer" : "default"}}>
+              <div>
+                <div style={{fontSize: 14, fontWeight: 500}}>Indizio all'impostore</div>
+                <div className="muted" style={{fontSize: 12, marginTop: 2}}>
+                  L'impostore riceve un suggerimento molto vago sulla parola
+                </div>
+              </div>
+              <div className={`toggle-track${gs?.hintEnabled ? " on" : ""}`}>
+                <div className="toggle-thumb" />
+              </div>
+            </div>
+          </div>
+
+          {!isHost && gs?.hintEnabled && (
+            <div className="info-banner">Opzione attiva: l'impostore riceverà un indizio vago</div>
+          )}
+
+          {error && <div className="error-msg" style={{marginTop: 8}}>{error}</div>}
+
+          <div style={{marginTop: 16}}>
+            {isHost ? (
+              <button className="btn btn-primary" onClick={handleStart}
+                disabled={gs?.players?.length < 2}>
+                {gs?.players?.length < 2 ? "Aspetta altri giocatori…" : "Inizia Partita"}
+              </button>
+            ) : (
+              <p className="waiting">In attesa che l'host avvii la partita…</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── GAME ─────────────────────────────────────────────────────────── */}
+      {screen === "game" && (
+        <>
+          <div className="card" style={{marginTop: 24}}>
+            <div className="card-top" />
+            <div className={`role-card ${amImp ? "role-impostor" : "role-player"}`}>
+              <div className="role-emoji">{amImp ? "🕵️" : "✅"}</div>
+              {amImp ? (
+                <>
+                  <div className="role-label role-label-red">Sei l'impostore</div>
+                  <div className="role-word" style={{color: "var(--red)"}}>???</div>
+                  <div className="role-sub">Non conosci la parola. Cerca di capirla dagli indizi!</div>
+                  {gs.hintEnabled && WORD_HINTS[gs.word] && (
+                    <div className="hint-box">
+                      <div className="hint-label">Indizio vago</div>
+                      <div className="hint-value">"{WORD_HINTS[gs.word]}"</div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="role-label role-label-green">La parola segreta è</div>
+                  <div className="role-word" style={{color: "var(--green)"}}>{gs.word}</div>
+                  <div className="role-sub">Dai un indizio a voce senza rivelarla — c'è un impostore tra voi!</div>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="label">Ordine di turno (casuale)</div>
+            {orderedPlayers.map((p, i) => (
+              <div key={p.id} className={`order-row${p.id === pid ? " me" : ""}`}>
+                <div className="order-num">{i + 1}</div>
+                <span style={{flex: 1}}>{p.name}{p.id === pid ? " (tu)" : ""}</span>
+              </div>
+            ))}
+            <p className="muted" style={{marginTop: 10, fontSize: 12}}>
+              Parlate in quest'ordine su Discord, poi l'host avvia la votazione.
+            </p>
+          </div>
+
+          {isHost ? (
+            <div className="card" style={{marginBottom: 0}}>
+              <button className="btn btn-primary" onClick={handleGoVoting}>
+                Tutti hanno parlato → Vota
+              </button>
+            </div>
+          ) : (
+            <p className="waiting">In attesa che l'host avvii la votazione…</p>
+          )}
+        </>
+      )}
+
+      {/* ── VOTING ───────────────────────────────────────────────────────── */}
+      {screen === "voting" && (
+        <div className="card" style={{marginTop: 24}}>
+          <div className="card-top" />
+          <h2>Chi è l'impostore?</h2>
+          <p className="muted" style={{marginBottom: 16}}>
+            Discutete su Discord, poi ognuno vota qui.
+          </p>
+          {!hasVoted ? (
+            <>
+              <div className="label">Vota il tuo sospettato:</div>
+              {gs.players.filter(p => p.id !== pid).map(p => (
+                <button key={p.id} className="btn btn-vote" onClick={() => handleVote(p.id)}>
+                  {p.name}
+                </button>
+              ))}
+            </>
+          ) : (
+            <p className="waiting">
+              Voto inviato! In attesa degli altri… ({Object.keys(votes).length}/{gs.players.length})
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* ── LOADING ──────────────────────────────────────────────────────── */}
+      {screen === "loading" && (
+        <div className="card" style={{marginTop: 32, textAlign: "center"}}>
+          <p className="muted">Connessione in corso…</p>
+        </div>
+      )}
+
+      {/* ── ELIMINATED ───────────────────────────────────────────────────── */}
+      {screen === "eliminated" && (
+        <>
+          <div className="card" style={{marginTop: 24}}>
+            <div className="card-top" />
+            <h2>Risultato del voto</h2>
+            <div className="label">Voti ricevuti</div>
+            {gs.players.map(p => (
+              <div key={p.id} className={`vote-row${p.id === mostVotedId ? " imp-row" : ""}`}>
+                <span>{p.name}{p.id === mostVotedId ? " 👈 eliminato" : ""}</span>
+                <span className="vote-count">{voteCount[p.id] || 0} voti</span>
+              </div>
+            ))}
+            <div style={{marginTop: 16, padding: "14px", background: "var(--surface2)", borderRadius: "var(--radius-sm)", textAlign: "center"}}>
+              <p style={{fontSize: 14}}>
+                <strong style={{color: "var(--gold)"}}>{mostVotedPlayer?.name}</strong> è stato eliminato dalla maggioranza.
+              </p>
+              {impostorCaught ? (
+                <p style={{fontSize: 13, color: "var(--red)", marginTop: 6}}>
+                  Era l'impostore! Ma può ancora salvarsi indovinando la parola… 🕵️
+                </p>
+              ) : (
+                <p style={{fontSize: 13, color: "var(--green)", marginTop: 6}}>
+                  Non era l'impostore. L'impostore è rimasto nascosto! 😈
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="card" style={{marginBottom: 0}}>
+            {isHost ? (
+              <button className="btn btn-primary" onClick={handleRevealWord}>
+                {impostorCaught ? "L'impostore tenta di indovinare →" : "Svela la parola →"}
+              </button>
+            ) : (
+              <p className="waiting">In attesa che l'host continui…</p>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ── GUESSING ─────────────────────────────────────────────────────── */}
+      {screen === "guessing" && (
+        <div className="card" style={{marginTop: 24}}>
+          <div className="card-top" />
+          {amImp ? (
+            <>
+              <div className="role-card role-impostor" style={{marginBottom: 16}}>
+                <div className="role-emoji">🎯</div>
+                <div className="role-label role-label-red">Ultima chance</div>
+                <div className="role-sub">Sei stato smascherato! Se indovini la parola segreta, vinci lo stesso.</div>
+              </div>
+              <div className="label">Qual è la parola segreta?</div>
+              <input type="text" placeholder="Scrivi la parola…"
+                value={guessInput} onChange={e => setGuessInput(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleGuess()} />
+              <button className="btn btn-primary" onClick={handleGuess} disabled={!guessInput.trim()}>
+                Rispondo
+              </button>
+            </>
+          ) : (
+            <div style={{textAlign: "center", padding: "24px 0"}}>
+              <div style={{fontSize: 32, marginBottom: 12}}>⏳</div>
+              <p style={{fontSize: 15, fontWeight: 500, marginBottom: 8}}>L'impostore sta cercando di indovinare la parola…</p>
+              <p className="muted">Se indovina, vince lui!</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── RESULTS ──────────────────────────────────────────────────────── */}
+      {screen === "results" && (
+        <>
+          <div className="card" style={{marginTop: 24}}>
+            <div className="card-top" />
+            <div className={`result-banner ${impostorWins ? "result-lose" : "result-win"}`}>
+              <div className="result-icon">{impostorWins ? "😈" : "🎉"}</div>
+              <div className="result-title">
+                {impostorWins ? "L'impostore ha vinto!" : "I civili hanno vinto!"}
+              </div>
+              {gs.impostorGuess && (
+                <p style={{fontSize: 13, color: "var(--muted)", marginTop: 4}}>
+                  {gs.impostorGuessCorrect
+                    ? `L'impostore ha indovinato: "${gs.impostorGuess}" ✓`
+                    : `L'impostore ha tentato con: "${gs.impostorGuess}" ✗`}
+                </p>
+              )}
+            </div>
+
+            <div style={{textAlign: "center", padding: "16px", background: "var(--gold-bg)", border: "0.5px solid var(--gold-border)", borderRadius: "var(--radius-sm)", marginBottom: 16}}>
+              <div className="label" style={{marginBottom: 4}}>La parola segreta era</div>
+              <div style={{fontSize: 28, fontWeight: 600, color: "var(--gold)"}}>{gs.word}</div>
+            </div>
+
+            <div className="label">L'impostore era</div>
+            <div className="player-row" style={{marginBottom: 16, borderColor: "var(--red-border)", background: "var(--red-bg)"}}>
+              <div className="dot" style={{background: "var(--red)"}} />
+              <span>{impostorPlayer?.name} 🕵️</span>
+            </div>
+
+            <div className="label">Riepilogo voti</div>
+            {gs.players.map(p => (
+              <div key={p.id} className={`vote-row${p.id === gs.impostorId ? " imp-row" : ""}`}>
+                <span>{p.name}{p.id === gs.impostorId ? " 🕵️" : ""}</span>
+                <span className="vote-count">{voteCount[p.id] || 0} voti</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="card" style={{marginBottom: 0}}>
+            {isHost ? (
+              <button className="btn btn-primary" onClick={handleRestart}>
+                Nuova Partita
+              </button>
+            ) : (
+              <p className="waiting">In attesa che l'host avvii una nuova partita…</p>
+            )}
+          </div>
+        </>
+      )}
+
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
